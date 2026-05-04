@@ -8,7 +8,14 @@ export default async function handler(req, res) {
     });
   }
 
-  const { title, email } = req.body;
+  const { title, content, email, authorName } = req.body;
+
+  if (!title || !email) {
+    return res.status(400).json({
+      success: false,
+      error: "Missing title or email",
+    });
+  }
 
   const emailUser = process.env.EMAIL_USER;
   const emailPass = process.env.EMAIL_PASS || process.env.EMAIL_APP_PASSWORD;
@@ -16,7 +23,7 @@ export default async function handler(req, res) {
   if (!emailUser || !emailPass) {
     return res.status(500).json({
       success: false,
-      error: "Missing email credentials",
+      error: "Missing EMAIL_USER or EMAIL_PASS",
     });
   }
 
@@ -30,14 +37,25 @@ export default async function handler(req, res) {
     });
 
     await transporter.sendMail({
-      from: `"ML Hub" <${emailUser}>`,
+      from: `"ML Hub Article Alert" <${emailUser}>`,
       to: emailUser,
-      subject: "New Article Published - ML Hub",
+      subject: `New Article Posted: ${title}`,
       html: `
-        <h2>New Article Published</h2>
-        <p><strong>Title:</strong> ${title}</p>
-        <p><strong>Published by:</strong> ${email}</p>
-        <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+        <h2>New Article Posted</h2>
+
+        <p><strong>Posted by:</strong> ${authorName || "Unknown User"}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Time posted:</strong> ${new Date().toLocaleString("en-PH", {
+          timeZone: "Asia/Manila",
+        })}</p>
+
+        <hr />
+
+        <p><strong>Article title:</strong></p>
+        <p>${title}</p>
+
+        <p><strong>Article content:</strong></p>
+        <p>${content || "No content provided."}</p>
       `,
     });
 
@@ -49,7 +67,7 @@ export default async function handler(req, res) {
 
     return res.status(500).json({
       success: false,
-      error: "Failed to send article notification",
+      error: error.message,
     });
   }
 }

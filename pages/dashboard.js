@@ -246,43 +246,70 @@ export default function Dashboard() {
   };
 
   const createArticle = async () => {
-    if (!title.trim() || !content.trim()) {
-      alert("Title and content are required.");
-      return;
-    }
+  if (!title.trim() || !content.trim()) {
+    alert("Title and content are required.");
+    return;
+  }
 
-    if (!user?.id) {
-      alert("User not loaded. Please refresh.");
-      return;
-    }
+  if (!user?.id) {
+    alert("User not loaded. Please refresh.");
+    return;
+  }
 
-    setIsPublishing(true);
+  setIsPublishing(true);
 
-    const { error } = await supabase.from("articles").insert([
-      {
-        title: title.trim(),
-        content: content.trim(),
-        user_id: user.id,
-        author_name: getDisplayName(user),
-        avatar_url: getAvatarUrl(user),
-        source_url: sourceUrl || null,
-        likes: 0,
+  const articleTitle = title.trim();
+  const articleContent = content.trim();
+  const authorName = getDisplayName(user);
+
+  const { error } = await supabase.from("articles").insert([
+    {
+      title: articleTitle,
+      content: articleContent,
+      user_id: user.id,
+      author_name: authorName,
+      avatar_url: getAvatarUrl(user),
+      source_url: sourceUrl || null,
+      likes: 0,
+    },
+  ]);
+
+  setIsPublishing(false);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  try {
+    const emailRes = await fetch("/api/send-article-alert", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    ]);
+      body: JSON.stringify({
+        title: articleTitle,
+        content: articleContent,
+        email: user.email,
+        authorName: authorName,
+      }),
+    });
 
-    setIsPublishing(false);
+    const emailResult = await emailRes.json();
 
-    if (error) {
-      alert(error.message);
-      return;
+    if (!emailResult.success) {
+      console.error("Article email failed:", emailResult.error);
     }
+  } catch (emailError) {
+    console.error("Article email request failed:", emailError);
+  }
 
-    setTitle("");
-    setContent("");
-    setSourceUrl("");
-    fetchArticles();
-    alert("Article published successfully!");
-  };
+  setTitle("");
+  setContent("");
+  setSourceUrl("");
+  fetchArticles();
+  alert("Article published successfully!");
+};
 
   const deleteArticle = async (id) => {
     if (!confirm("Delete this article permanently?")) return;
